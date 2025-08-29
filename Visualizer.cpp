@@ -1,0 +1,110 @@
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <cmath>
+#include <algorithm>
+using namespace std;
+
+//Paraview Class Defs.
+//-------------------------------------------------
+ParaviewWriter ParaviewWriter(){}
+//-------------------------------------------------
+void ParaviewWriter::WriteOneTimeStep(const char* filename,vector<double> &xcoords,vector<double> &density,vector<double> &velocity,vector<double> &pressure){
+  //Note: follows .vtu format (unstructured)
+
+  ofstream myfile(filename);
+
+  if (!myfile){ //checking if file opened successfully
+    cerr<<"Error: Could Not Open File "<<filename<<endl;
+    return;
+  }
+
+  //TITLE
+  myfile<<"<?xml version=\"1.0\"?>"<<endl;
+  myfile<<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">"<<endl;
+  myfile<<"  <UnstructuredGrid>"<<endl;
+  myfile<<"    <Piece NumberOfPoints=\""<<(int)xcoords.size()<<"\" NumberOfCells=\""<<(int)xcoords.size()-1<<"\">"<<endl;
+  myfile<<endl;
+  
+  //COORDS. INFO.
+  myfile<<"      <!-- Point coordinates -->"<<endl;
+  myfile<<"      <Points>"endl;
+  myfile<<"        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">"<<endl;
+  for (int n=0;n<(int)xcoords.size();n++)
+    myfile<<"        "<<xcoords[n]<<" 0.0"<<" 0.0"<<endl;    
+
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"      </Points>"<<endl;
+  myfile<<endl;
+  myfile<<"      <!-- Connectivity (lines between points) -->"<<endl;
+  myfile<<"      <Cells>"endl;
+  myfile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">"<<endl;
+  for (int n=0;n<(int)xcoords.size()-1;n++)
+    myfile<<"        "<<n<<" "<<n+1<<endl;
+
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">"<<endl;
+
+<?xml version="1.0"?>
+<VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">
+  <UnstructuredGrid>
+    <Piece NumberOfPoints="5" NumberOfCells="4">
+
+      <!-- Point coordinates -->
+      <Points>
+        <DataArray type="Float32" NumberOfComponents="3" format="ascii">
+          0.0 0.0 0.0
+          1.0 0.0 0.0
+          2.0 0.0 0.0
+          3.0 0.0 0.0
+          4.0 0.0 0.0
+        </DataArray>
+      </Points>
+
+      <!-- Connectivity (lines between points) -->
+      <Cells>
+        <DataArray type="Int32" Name="connectivity" format="ascii">
+          0 1
+          1 2
+          2 3
+          3 4
+        </DataArray>
+        <DataArray type="Int32" Name="offsets" format="ascii">
+          2 4 6 8
+        </DataArray>
+        <DataArray type="UInt8" Name="types" format="ascii">
+          3 3 3 3
+        </DataArray>
+      </Cells>
+
+      <!-- Fields at points -->
+      <PointData Scalars="scalars">
+        <DataArray type="Float32" Name="density" format="ascii">
+          1.0 0.9 0.85 0.95 1.0
+        </DataArray>
+        <DataArray type="Float32" Name="velocity" format="ascii">
+          0.0 0.1 0.2 0.1 0.0
+        </DataArray>
+        <DataArray type="Float32" Name="pressure" format="ascii">
+          1.0 0.95 0.92 0.97 1.0
+        </DataArray>
+      </PointData>
+
+    </Piece>
+  </UnstructuredGrid>
+</VTKFile>
+
+  return;
+}
+//-------------------------------------------------
+void ParaviewWriter::WriteAllTimeSteps(const char* filename){
+
+
+
+
+
+}
+//-------------------------------------------------
+ParaviewWriter::~ParaviewWriter(){}
+//-------------------------------------------------
