@@ -4,6 +4,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include "Visualizer.h"
 using namespace std;
 
 
@@ -32,6 +33,11 @@ int main(){
   double t_max = 1.0;
   double t_samples = 10.0;
 
+  //visualization
+  ParaviewWriter Visual;
+  int iterout = 2;
+  vector<string> iter_visuals; //stores all iter. out #s for writing .pvd file
+  string name,time_step;
 
   //! MESH + TIME GENERATION
   //xcoords
@@ -45,6 +51,7 @@ int main(){
   double dt = t_max / t_samples;
   for (int n=0;n<=t_samples;n++)
     time.push_back(dt*n);
+  
 
   //! DATA ALLOCATION
   //state variables
@@ -55,6 +62,7 @@ int main(){
   double shock_loc,piston_loc;
 
   //! COMPUTE INTERMEDIATE STATES -- Rankine-Hugoniot Jump Conditions
+  //Note: assuming perfect gas
   double alpha = 2.0 / (gamma+1.0)*rho_f;
   double beta = pressure_f * ( (gamma-1.0) / (gamma+1.0) );
   double phi = alpha / pow(vel_p-vel_f,2.0);
@@ -92,9 +100,21 @@ int main(){
 
     //print out results and save for visualization
     }
+    if (t%iterout == 0){
+      time_step = to_string(t);
+      iter_visuals.push_back(time_step);
+      name = "Results/Time";
+      name += time_step;
+      name += ".vtu";
+      const char* filename = name.c_str();
+      Visual.WriteOneTimeStep(filename,xcoords,rho,vel,pressure);
+    }
   }
 
-
+  //! POST-PROCESSING
+  //Storing all time-steps in one file (.pvd)
+  const char* file = "Results/Results.pvd";
+  Visual.WriteAllTimeSteps(file,iter_visuals);
 
 
   return 0;

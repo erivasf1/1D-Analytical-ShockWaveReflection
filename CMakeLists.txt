@@ -31,11 +31,13 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 # Define source files
 set(SOURCES
     Main.cpp
+    Visualizer.cpp
 )
 
 
 # Define header files
 set(HEADERS
+    Visualizer.h
 )
 
 

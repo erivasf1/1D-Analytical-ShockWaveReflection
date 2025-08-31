@@ -1,16 +1,11 @@
-
-#include <iostream>
-#include <string>
-#include <vector>
-#include <cmath>
-#include <algorithm>
-using namespace std;
+//Visualizer Defs.
+#include "Visualizer.h"
 
 //Paraview Class Defs.
 //-------------------------------------------------
-ParaviewWriter ParaviewWriter(){}
+ParaviewWriter::ParaviewWriter(){}
 //-------------------------------------------------
-void ParaviewWriter::WriteOneTimeStep(const char* filename,vector<double> &xcoords,vector<double> &density,vector<double> &velocity,vector<double> &pressure){
+void ParaviewWriter::WriteOneTimeStep(const char* &filename,vector<double> &xcoords,vector<double> &density,vector<double> &velocity,vector<double> &pressure){
   //Note: follows .vtu format (unstructured)
 
   ofstream myfile(filename);
@@ -29,7 +24,7 @@ void ParaviewWriter::WriteOneTimeStep(const char* filename,vector<double> &xcoor
   
   //COORDS. INFO.
   myfile<<"      <!-- Point coordinates -->"<<endl;
-  myfile<<"      <Points>"endl;
+  myfile<<"      <Points>"<<endl;
   myfile<<"        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">"<<endl;
   for (int n=0;n<(int)xcoords.size();n++)
     myfile<<"        "<<xcoords[n]<<" 0.0"<<" 0.0"<<endl;    
@@ -37,15 +32,94 @@ void ParaviewWriter::WriteOneTimeStep(const char* filename,vector<double> &xcoor
   myfile<<"        </DataArray>"<<endl;
   myfile<<"      </Points>"<<endl;
   myfile<<endl;
+
+  int count = 0; //for ensuring 6 columns of data per data type (e.g. coords)
+  //CELLS (CONNECTIVITIES) INFO.
   myfile<<"      <!-- Connectivity (lines between points) -->"<<endl;
-  myfile<<"      <Cells>"endl;
+  myfile<<"      <Cells>"<<endl;
   myfile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">"<<endl;
   for (int n=0;n<(int)xcoords.size()-1;n++)
     myfile<<"        "<<n<<" "<<n+1<<endl;
 
   myfile<<"        </DataArray>"<<endl;
   myfile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">"<<endl;
+  myfile<<"        ";
+  for (int n=1;n<(int)xcoords.size();n++){
+    count++;
+    myfile<<2*n<<" ";    
+    if (count % 6 == 0){
+      myfile<<endl;
+      myfile<<"        ";
+    }
+  }
+  count = 0;
+  myfile<<endl;
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">"<<endl;
+  myfile<<"        ";
+  for (int n=0;n<(int)xcoords.size();n++){
+    count++;
+    myfile<<3<<" ";
+    if (count % 6 == 0){
+      myfile<<endl;
+      myfile<<"        ";
+    }
+  }
+  count = 0;
+  myfile<<endl;
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"      </Cells>"<<endl;
 
+  //STATE VARIABLES INFO.
+  myfile<<"      <!-- Fields at points -->"<<endl;
+  myfile<<"      <PointData Scalars=\"scalars\">"<<endl;
+  myfile<<"        <DataArray type=\"Float32\" Name=\"density\" format=\"ascii\">"<<endl;
+  myfile<<"        ";
+  for (int n=0;n<(int)density.size();n++){
+    count++;
+    myfile<<density[n]<<" ";
+    if (count % 6 == 0){
+      myfile<<endl;
+      myfile<<"        ";
+    }
+  }
+  count = 0;
+  myfile<<endl;
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"        <DataArray type=\"Float32\" Name=\"velocity\" format=\"ascii\">"<<endl;
+  myfile<<"        ";
+  for (int n=0;n<(int)velocity.size();n++){
+    count++;
+    myfile<<velocity[n]<<" ";
+    if (count % 6 == 0){
+      myfile<<endl;
+      myfile<<"        ";
+    }
+  }
+  count = 0;
+  myfile<<endl;
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"        <DataArray type=\"Float32\" Name=\"pressure\" format=\"ascii\">"<<endl;
+  myfile<<"        ";
+  for (int n=0;n<(int)pressure.size();n++){
+    count++;
+    myfile<<pressure[n]<<" ";
+    if (count % 6 == 0){
+      myfile<<endl;
+      myfile<<"        ";
+    }
+  }
+  count = 0;
+  myfile<<endl;
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"      </PointData>"<<endl;
+
+  //END OF FILE
+  myfile<<"    </Piece>"<<endl;
+  myfile<<"  </UnstructuredGrid>"<<endl;
+  myfile<<"</VTKFile>"<<endl;
+
+/* --Template
 <?xml version="1.0"?>
 <VTKFile type="UnstructuredGrid" version="0.1" byte_order="LittleEndian">
   <UnstructuredGrid>
@@ -70,23 +144,23 @@ void ParaviewWriter::WriteOneTimeStep(const char* filename,vector<double> &xcoor
           2 3
           3 4
         </DataArray>
-        <DataArray type="Int32" Name="offsets" format="ascii">
+        <DataArray type="Int32" Name="offsets" format="ascii"> -> apply count here
           2 4 6 8
         </DataArray>
-        <DataArray type="UInt8" Name="types" format="ascii">
+        <DataArray type="UInt8" Name="types" format="ascii"> -> apply count here
           3 3 3 3
         </DataArray>
       </Cells>
 
       <!-- Fields at points -->
       <PointData Scalars="scalars">
-        <DataArray type="Float32" Name="density" format="ascii">
+        <DataArray type="Float32" Name="density" format="ascii"> -> apply count here
           1.0 0.9 0.85 0.95 1.0
         </DataArray>
-        <DataArray type="Float32" Name="velocity" format="ascii">
+        <DataArray type="Float32" Name="velocity" format="ascii"> -> apply count here
           0.0 0.1 0.2 0.1 0.0
         </DataArray>
-        <DataArray type="Float32" Name="pressure" format="ascii">
+        <DataArray type="Float32" Name="pressure" format="ascii"> -> apply count here
           1.0 0.95 0.92 0.97 1.0
         </DataArray>
       </PointData>
@@ -94,16 +168,42 @@ void ParaviewWriter::WriteOneTimeStep(const char* filename,vector<double> &xcoor
     </Piece>
   </UnstructuredGrid>
 </VTKFile>
-
+  */
   return;
 }
 //-------------------------------------------------
-void ParaviewWriter::WriteAllTimeSteps(const char* filename){
+void ParaviewWriter::WriteAllTimeSteps(const char* &filename,vector<string> &iter_visuals){
 
+  ofstream myfile(filename);
 
+  if (!myfile){ //checking if file opened successfully
+    cerr<<"Error: Could Not Open File "<<filename<<endl;
+    return;
+  }
 
+  //TITLE
+  myfile<<"<?xml version=\"1.0\"?>"<<endl;
+  myfile<<"<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">"<<endl;
+  myfile<<"  <Collection>"<<endl;
+  //Writing file names
+  for (int n=0;n<(int)iter_visuals.size();n++)
+    myfile<<"    <DataSet timestep=\""<<iter_visuals[n]<<"\""<<" part=\"0\""<<" file=\"Time"<<iter_visuals[n]<<".vtu\"/>"<<endl;
 
+  myfile<<"  </Collection>"<<endl;
+  myfile<<"</VTKFile>"<<endl;
+/*
+<VTKFile type="Collection" version="0.1" byte_order="LittleEndian">
+  <Collection>
+    <DataSet timestep="0" part="0" file="solution_0.vtu"/>
+    <DataSet timestep="1" part="0" file="solution_1.vtu"/>
+    <DataSet timestep="2" part="0" file="solution_2.vtu"/>
+    <DataSet timestep="3" part="0" file="solution_3.vtu"/>
+    <!-- Add more timesteps here -->
+  </Collection>
+</VTKFile>
+*/
 
+  return;
 }
 //-------------------------------------------------
 ParaviewWriter::~ParaviewWriter(){}
