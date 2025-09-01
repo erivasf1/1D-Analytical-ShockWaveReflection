@@ -206,5 +206,78 @@ void ParaviewWriter::WriteAllTimeSteps(const char* &filename,vector<string> &ite
   return;
 }
 //-------------------------------------------------
+void ParaviewWriter::WriteWaveLoc(const char* &filename,vector<double> &wave_pos,vector<double> &times){
+
+  ofstream myfile(filename);
+
+  if (!myfile){ //checking if file opened successfully
+    cerr<<"Error: Could Not Open File "<<filename<<endl;
+    return;
+  }
+
+  //TITLE
+  myfile<<"<?xml version=\"1.0\"?>"<<endl;
+  myfile<<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">"<<endl;
+  myfile<<"  <UnstructuredGrid>"<<endl;
+  myfile<<"    <Piece NumberOfPoints=\""<<(int)wave_pos.size()<<"\" NumberOfCells=\""<<(int)wave_pos.size()-1<<"\">"<<endl;
+  myfile<<endl;
+  
+  //COORDS. INFO.
+  myfile<<"      <!-- Point coordinates -->"<<endl;
+  myfile<<"      <Points>"<<endl;
+  myfile<<"        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">"<<endl;
+  for (int n=0;n<(int)wave_pos.size();n++)
+    myfile<<"        "<<wave_pos[n]<<" "<<times[n]<<" 0.0"<<endl;    
+
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"      </Points>"<<endl;
+  myfile<<endl;
+
+  int count = 0; //for ensuring 6 columns of data per data type (e.g. coords)
+  //CELLS (CONNECTIVITIES) INFO.
+  myfile<<"      <!-- Connectivity (lines between points) -->"<<endl;
+  myfile<<"      <Cells>"<<endl;
+  myfile<<"        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">"<<endl;
+  for (int n=0;n<(int)wave_pos.size()-1;n++)
+    myfile<<"        "<<n<<" "<<n+1<<endl;
+
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">"<<endl;
+  myfile<<"        ";
+  for (int n=1;n<(int)wave_pos.size();n++){
+    count++;
+    myfile<<2*n<<" ";    
+    if (count % 6 == 0){
+      myfile<<endl;
+      myfile<<"        ";
+    }
+  }
+  count = 0;
+  myfile<<endl;
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">"<<endl;
+  myfile<<"        ";
+  for (int n=0;n<(int)wave_pos.size();n++){
+    count++;
+    myfile<<3<<" ";
+    if (count % 6 == 0){
+      myfile<<endl;
+      myfile<<"        ";
+    }
+  }
+  count = 0;
+  myfile<<endl;
+  myfile<<"        </DataArray>"<<endl;
+  myfile<<"      </Cells>"<<endl;
+
+  //END OF FILE
+  myfile<<"    </Piece>"<<endl;
+  myfile<<"  </UnstructuredGrid>"<<endl;
+  myfile<<"</VTKFile>"<<endl;
+  
+
+  return;
+}
+//-------------------------------------------------
 ParaviewWriter::~ParaviewWriter(){}
 //-------------------------------------------------

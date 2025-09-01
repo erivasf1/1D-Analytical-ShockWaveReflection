@@ -14,8 +14,8 @@ int main(){
 
   //mesh
   double xmin = 0.0; //m
-  double xmax = 1.0; //m
-  double ptnum = 10.0;
+  double xmax = 5.0; //m
+  double ptnum = 1.0e3;
 
   //initial conditions
   //fluid
@@ -26,12 +26,12 @@ int main(){
 
   //piston
   double rho_p = 0.0;
-  double vel_p = 5.0;  // m/s
+  double vel_p = 10.0;  // m/s
   double pressure_p = 0.0;
 
   //time(s)
-  double t_max = 1.0;
-  double t_samples = 10.0;
+  double t_max = 0.007;
+  double t_samples = 100.0;
 
   //visualization
   ParaviewWriter Visual;
@@ -60,27 +60,31 @@ int main(){
   vector<double> pressure((int)xcoords.size());
   //loc. of waves (piston + shock)
   double shock_loc,piston_loc;
+  vector<double> shock((int)time.size());
+  vector<double> piston((int)time.size());
 
   //! COMPUTE INTERMEDIATE STATES -- Rankine-Hugoniot Jump Conditions
   //Note: assuming perfect gas
-  double alpha = 2.0 / (gamma+1.0)*rho_f;
+  double alpha = 2.0 / ( (gamma+1.0)*rho_f );
   double beta = pressure_f * ( (gamma-1.0) / (gamma+1.0) );
   double phi = alpha / pow(vel_p-vel_f,2.0);
   
   double pressure_star = ( 1.0 + sqrt(4.0*phi*(pressure_f+beta)+1.0) ) / (2.0*phi);
   pressure_star += pressure_f; //pressure
-  double rho_star = (pressure_star/pressure_f) + ((gamma-1.0)/(gamma+1.0)) /
-  ( (pressure_star/pressure_f) * ((gamma-1.0)/(gamma+1.0)) );
+  double rho_star = ( (pressure_star/pressure_f) + ((gamma-1.0)/(gamma+1.0)) ) /
+  ( (pressure_star/pressure_f) * ((gamma-1.0)/(gamma+1.0)) + 1.0 );
   rho_star *= rho_f; //density
 
   double vel_shock = (rho_f*vel_f - rho_star*vel_p) / (rho_f-rho_star); //shock speed
 
   //! MAIN LOOP
-  for (int t=0;t<t_samples;t++){
+  for (int t=0;t<=t_samples;t++){
 
     //compute new distance of piston + shock
     piston_loc = time[t] * vel_p;
+    piston[t] = piston_loc;
     shock_loc = time[t] * vel_shock;
+    shock[t] = shock_loc;
     
     for (int n=0;n<(int)xcoords.size();n++){ //iterating through all pts
       x = xcoords[n];
@@ -112,9 +116,16 @@ int main(){
   }
 
   //! POST-PROCESSING
-  //Storing all time-steps in one file (.pvd)
+  //Storing all time-steps of state variables in one file (.pvd)
   const char* file = "Results/Results.pvd";
   Visual.WriteAllTimeSteps(file,iter_visuals);
+
+  //Writing all wave locations
+  const char* file_contact = "Results/Contact_Locs.vtu";
+  const char* file_shock = "Results/Shock_Locs.vtu";
+
+  Visual.WriteWaveLoc(file_contact,piston,time);
+  Visual.WriteWaveLoc(file_shock,shock,time);
 
 
   return 0;

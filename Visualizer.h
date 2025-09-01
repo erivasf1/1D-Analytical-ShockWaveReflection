@@ -21,6 +21,7 @@ class ParaviewWriter {
 
   void WriteAllTimeSteps(const char* &filename,vector<string> &iter_visuals);
 
+  void WriteWaveLoc(const char* &filename,vector<double> &wave_pos,vector<double> &times);
 
   ~ParaviewWriter();
 };
