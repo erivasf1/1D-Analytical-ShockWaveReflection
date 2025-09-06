@@ -32,12 +32,14 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(SOURCES
     Main.cpp
     Visualizer.cpp
+    RankineHugoniot.cpp
 )
 
 
 # Define header files
 set(HEADERS
     Visualizer.h
+    RankineHugoniot.h
 )
 
 

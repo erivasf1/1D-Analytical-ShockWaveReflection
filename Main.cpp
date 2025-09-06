@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include "Visualizer.h"
+#include "RankineHugoniot.h"
 using namespace std;
 
 
@@ -29,9 +30,15 @@ int main(){
   double vel_p = 10.0;  // m/s
   double pressure_p = 0.0;
 
+  //wall
+  double rho_wall = 0.0;
+  double vel_wall = 0.0;  // m/s
+  double pressure_wall = 0.0;
+  double wall_loc = 0.8*xmax; //wall starts at 80% of xmax
+
   //time(s)
-  double t_max = 0.007;
-  double t_samples = 100.0;
+  double t_final = 0.5;
+  double t_samples = 1.0e3;
 
   //visualization
   ParaviewWriter Visual;
@@ -48,7 +55,7 @@ int main(){
     xcoords.push_back(xmin + dx*n);
   //time
   vector<double> time;
-  double dt = t_max / t_samples;
+  double dt = t_final / t_samples;
   for (int n=0;n<=t_samples;n++)
     time.push_back(dt*n);
   
@@ -58,24 +65,21 @@ int main(){
   vector<double> rho((int)xcoords.size());
   vector<double> vel((int)xcoords.size());
   vector<double> pressure((int)xcoords.size());
-  //loc. of waves (piston + shock)
+  //loc. of waves (piston + wall + shock)
   double shock_loc,piston_loc;
   vector<double> shock((int)time.size());
   vector<double> piston((int)time.size());
 
+
   //! COMPUTE INTERMEDIATE STATES -- Rankine-Hugoniot Jump Conditions
   //Note: assuming perfect gas
-  double alpha = 2.0 / ( (gamma+1.0)*rho_f );
-  double beta = pressure_f * ( (gamma-1.0) / (gamma+1.0) );
-  double phi = alpha / pow(vel_p-vel_f,2.0);
-  
-  double pressure_star = ( 1.0 + sqrt(4.0*phi*(pressure_f+beta)+1.0) ) / (2.0*phi);
-  pressure_star += pressure_f; //pressure
-  double rho_star = ( (pressure_star/pressure_f) + ((gamma-1.0)/(gamma+1.0)) ) /
-  ( (pressure_star/pressure_f) * ((gamma-1.0)/(gamma+1.0)) + 1.0 );
-  rho_star *= rho_f; //density
+  //Note: from FSI Notes by Dr. Wang (found on Canvas)
 
-  double vel_shock = (rho_f*vel_f - rho_star*vel_p) / (rho_f-rho_star); //shock speed
+  RH_BASE RH_Jump(gamma);
+  array<double,3> shock_states = RH_Jump.ComputeNewStates(rho_f,vel_f,pressure_f,vel_p);
+  double rho_star = shock_states[0]; 
+  double pressure_star = shock_states[1]; 
+  double vel_shock = shock_states[2];
 
   //! MAIN LOOP
   for (int t=0;t<=t_samples;t++){
@@ -83,24 +87,31 @@ int main(){
     //compute new distance of piston + shock
     piston_loc = time[t] * vel_p;
     piston[t] = piston_loc;
+    //piston[t] /= xmax;
     shock_loc = time[t] * vel_shock;
     shock[t] = shock_loc;
+    //shock[t] /= xmax;
     
     for (int n=0;n<(int)xcoords.size();n++){ //iterating through all pts
       x = xcoords[n];
-      // pts in piston
-      if (x<=piston_loc){
+      
+      if (x<=piston_loc){ //pts in piston
         rho[n] = rho_p; vel[n] = vel_p; pressure[n] = pressure_p;
       }
-      //pts in intermediate region 
-      else if (x>piston_loc && x<=shock_loc){
-        rho[n] = rho_star; vel[n] = vel_p;  pressure[n] = pressure_star;
+      else if (x>= wall_loc){ //pts in wall
+        rho[n] = rho_wall; vel[n] = vel_wall;  pressure[n] = pressure_wall;
       }
-      else if (x>shock_loc){
-        rho[n] = rho_f; vel[n] = vel_f;  pressure[n] = pressure_f;
-      } 
-      else //error handling
-        cout<<"Error!\n";
+      else { //pts in between wall + piston
+       
+        if (x<shock_loc){ //intermediate state
+          rho[n] = rho_star; vel[n] = vel_p;  pressure[n] = pressure_star;
+        }
+        else if (x>shock_loc){ //undisturbed state
+          rho[n] = rho_f; vel[n] = vel_f;  pressure[n] = pressure_f;
+        }  
+        else //error handling
+          cout<<"Error: some pts left unassigned in between piston and wall!\n";
+      }
 
     //print out results and save for visualization
     }
