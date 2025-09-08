@@ -24,6 +24,8 @@ class RH_BASE {
 
   array<double,3> ComputeNewStates(double rho_f,double vel_f,double pressure_f,double vel_p);
 
+  void AssignIntermediateStates(vector<double> &rho,vector<double> &vel,vector<double> &pressure,vector<double> &xcoords,double shock_loc,array<double,3> &left_state,array<double,3> &right_state,bool dir,double piston_loc,double wall_loc);
+
   ~RH_BASE();
 
 };
