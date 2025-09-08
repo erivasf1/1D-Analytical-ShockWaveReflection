@@ -7,6 +7,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <array>
 
 using namespace std;
 
@@ -22,7 +23,7 @@ class RH_BASE {
   double ComputeBeta(double pressure_f);
   double ComputePhi(double vel_f,double vel_p,double alpha);
 
-  array<double,3> ComputeNewStates(double rho_f,double vel_f,double pressure_f,double vel_p);
+  array<double,3> ComputeShockStates(double rho_f,double vel_f,double pressure_f,double vel_p);
 
   void AssignIntermediateStates(vector<double> &rho,vector<double> &vel,vector<double> &pressure,vector<double> &xcoords,double shock_loc,array<double,3> &left_state,array<double,3> &right_state,bool dir,double piston_loc,double wall_loc);
 

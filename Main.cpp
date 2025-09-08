@@ -4,6 +4,8 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <array>
+
 #include "Visualizer.h"
 #include "RankineHugoniot.h"
 using namespace std;
@@ -16,7 +18,7 @@ int main(){
   //mesh
   double xmin = 0.0; //m
   double xmax = 5.0; //m
-  double ptnum = 1.0e3;
+  double ptnum = 5.0e3;
 
   //initial conditions
   //fluid
@@ -29,6 +31,7 @@ int main(){
   double rho_p = 0.0;
   double vel_p = 10.0;  // m/s
   double pressure_p = 0.0;
+  double piston_loc = 0.0;
 
   //wall
   double rho_wall = 0.0;
@@ -37,8 +40,8 @@ int main(){
   double wall_loc = 0.8*xmax; //wall starts at 80% of xmax
 
   //time(s)
-  double t_final = 0.1;
-  double t_samples = 1.0e3;
+  double t_final = 0.4;
+  double t_samples = 2.0e2;
 
   //visualization
   ParaviewWriter Visual;
@@ -65,11 +68,14 @@ int main(){
   vector<double> rho((int)xcoords.size());
   vector<double> vel((int)xcoords.size());
   vector<double> pressure((int)xcoords.size());
-  //loc. of waves (piston + wall + shock)
-  double shock_loc,piston_loc;
+  double shock_loc,vel_s; //location + velocity of shock wave
+  //location list of shock and piston
   vector<double> shock((int)time.size());
   vector<double> piston((int)time.size());
-  array<double,3> left_state,right_state;
+  array<double,3> left_state{rho_f,vel_f,pressure_f}; //initial conditions are of fluid
+  array<double,3> right_state{rho_f,vel_f,pressure_f};
+  double t_contact = 0.0;
+  double piston_loc_wall_collision;
 
 
   //! COMPUTE INTERMEDIATE STATES -- Rankine-Hugoniot Jump Conditions
@@ -77,31 +83,66 @@ int main(){
   //Note: from FSI Notes by Dr. Wang (found on Canvas)
 
   RH_BASE RH_Jump(gamma);
-  bool shock_dir{true}; //assumed positive to start off
   array<double,3> shock_states;
+  //bool shock_dir{true}; //assumed positive to start off
 //  bool surface{true}; //true=wall & false=piston (surface that shock contacts)
 
   //computes 1st intermediate state from initial piston velocity
-  shock_states = RH_Jump.ComputeNewStates(rho_f,vel_f,pressure_f,vel_p);
+  //shock_states = RH_Jump.ComputeNewStates(rho_f,vel_f,pressure_f,vel_p);
 
   //double rho_star = shock_states[0]; 
   //double pressure_star = shock_states[1]; 
-  double vel_shock = shock_states[2];
+  //double vel_shock = shock_states[2];
 
-  double shock_collision_time = wall_loc / vel_shock; //(s) w/ either piston or wall
+  //double shock_collision_time = wall_loc / vel_shock; //(s) w/ either piston or wall
 
-  left_state[0] = shock_states[0]; left_state[1] = vel_p; left_state[2] = shock_states[1];
-  right_state[0] = rho_f; right_state[1] = vel_f; right_state[2] = pressure_f;
+  //left_state[0] = shock_states[0]; left_state[1] = vel_p; left_state[2] = shock_states[1];
+  //right_state[0] = rho_f; right_state[1] = vel_f; right_state[2] = pressure_f;
 
   //NOTE: relative time vs. absolute time
 
   //! MAIN LOOP
   for (int t=0;t<=t_samples;t++){
 
+    //! COMPUTE INTERMEDIATE STATES -- Rankine-Hugoniot Jump Conditions
+    //1st time -- compute intermediate state
+    if (t==0) {
+      shock_states = RH_Jump.ComputeShockStates(rho_f,vel_f,pressure_f,vel_p);
+      vel_s = shock_states[2];
+      left_state[0] = shock_states[0];left_state[1] = vel_p; left_state[2] = shock_states[1]; //new state of fluid affected by shock
+    }
+
     //compute new distance of piston + shock
     piston_loc = time[t] * vel_p;
+    shock_loc = (vel_s>0) ? piston_loc_wall_collision + (time[t]-t_contact) * vel_s : wall_loc + (time[t]-t_contact) * vel_s;
+
+    if (shock_loc >= wall_loc){ //SHOCK-WALL CASE
+      shock_states = RH_Jump.ComputeShockStates(left_state[0],left_state[1],left_state[2],vel_wall);
+      right_state[0] = shock_states[0];right_state[1] = vel_wall; right_state[2] = shock_states[1]; //new state of fluid affected by shock
+
+      //correcting shock postion
+      t_contact += (wall_loc - piston_loc) / vel_s; //time when shock contacts wall
+      piston_loc_wall_collision = t_contact * vel_p; //pos. piston is when shock contacted wall -- used for following if statement
+
+      shock_loc = wall_loc + shock_states[2]*(time[t]-t_contact); //corrected position
+      vel_s = shock_states[2]; //updating shock velocity
+
+    }
+    if ((shock_loc <= piston_loc) && (t!=0)){ //SHOCK-PISTON CASE
+      shock_states = RH_Jump.ComputeShockStates(right_state[0],right_state[1],right_state[2],vel_p);
+      left_state[0] = shock_states[0];left_state[1] = vel_p; left_state[2] = shock_states[1]; //new state of fluid affected by shock
+
+      //correcting shock postion
+      t_contact += (wall_loc - piston_loc_wall_collision) / (vel_p-vel_s);
+      piston_loc_wall_collision = t_contact * vel_p; //pos. piston is when shock contacted wall -- used for following if statement
+      shock_loc = piston_loc + shock_states[2]*(time[t]-t_contact); //corrected position
+      vel_s = shock_states[2]; //updating shock velocity
+    }
+
+    shock[t] = shock_loc;
     piston[t] = piston_loc;
 
+    /*
     if (time[t] >= shock_collision_time){ //shock-wall or shock-piston scenario
       //shock_states = RH_Jump.ComputeNewStates(rho_star,vel_p,pressure_star,vel_wall);
 
@@ -126,11 +167,12 @@ int main(){
       shock[t] = shock_loc;
  
     }
+    
     else { //normal scenario
       shock_loc = time[t] * vel_shock;
       shock[t] = shock_loc;
     }
-    
+    */
     for (int n=0;n<(int)xcoords.size();n++){ //iterating through all pts
       x = xcoords[n];
       

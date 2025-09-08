@@ -24,7 +24,7 @@ double RH_BASE::ComputePhi(double vel_f,double vel_p,double alpha){
 
 }
 //--------------------------------------------------------------------
-array<double,3> RH_BASE::ComputeNewStates(double rho_f,double vel_f,double pressure_f,double vel_p){
+array<double,3> RH_BASE::ComputeShockStates(double rho_f,double vel_f,double pressure_f,double vel_p){
 
   double alpha = ComputeAlpha(rho_f);
   double beta = ComputeBeta(pressure_f);
