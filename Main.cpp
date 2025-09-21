@@ -1,6 +1,6 @@
 // One-way coupled analytical Fluid-Structure Riemann Problem (FSRP)
 #include <iostream>
-#include <string>
+#include <string> 
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -37,11 +37,11 @@ int main(){
   double rho_wall = 0.0;
   double vel_wall = 0.0;  // m/s
   double pressure_wall = 0.0;
-  double wall_loc = 0.8*xmax; //wall starts at 80% of xmax
+  double wall_loc = 1.0*xmax; //wall starts at 80% of xmax
 
   //time(s)
-  double t_final = 0.4;
-  double t_samples = 2.0e2;
+  double t_final = 0.5;
+  double t_samples = 1.0e3;
 
   //visualization
   ParaviewWriter Visual;
@@ -114,6 +114,7 @@ int main(){
 
     //compute new distance of piston + shock
     piston_loc = time[t] * vel_p;
+    //note: vel_s positive refers to shock moving towards away from the piston and towards the wall
     shock_loc = (vel_s>0) ? piston_loc_wall_collision + (time[t]-t_contact) * vel_s : wall_loc + (time[t]-t_contact) * vel_s;
 
     if (shock_loc >= wall_loc){ //SHOCK-WALL CASE
@@ -197,7 +198,8 @@ int main(){
     //print out results and save for visualization
     }
     if (t%iterout == 0){
-      time_step = to_string(t);
+      time_step = to_string(time[t]);
+      time_step += "s";
       iter_visuals.push_back(time_step);
       name = "Results/Time";
       name += time_step;
