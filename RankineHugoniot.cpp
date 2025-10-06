@@ -54,10 +54,13 @@ void RH_BASE::ComputeShockResults(double t_target,array<double,3> &left_state,ar
   double t_contactw = 0.0; double t_contactp = 0.0; //collision times of shock with wall & piston,respectively
   array<double,3> shock_states; //{rho_star,pressure_star,vel_shock}
 
+  double piston_current_loc = piston_loc; //piston_loc is reserved for initial loc.
+
   left_state[0] = rho_f; left_state[1] = vel_f; left_state[2] = pressure_f; //!< resetting primitive vars. from previous time computation
   right_state[0] = rho_f; right_state[1] = vel_f; right_state[2] = pressure_f;
 
-  for (int n=0;n<1e4;n++){
+  int rh_itermax = 1e4;
+  for (int n=0;n<rh_itermax;n++){
     //Step 1: compute new left state from RH_JUMP conds.
     //shock_states = ComputeShockStates(rho_f,vel_f,pressure_f,vel_p);
     shock_states = ComputeShockStates(right_state[0],right_state[1],right_state[2],vel_p);
@@ -66,12 +69,12 @@ void RH_BASE::ComputeShockResults(double t_target,array<double,3> &left_state,ar
 
     //Step 2: compare if target time is greater than time of shock-wall collision
     // if not, compute position of shock and piston and break. if yes, go to step 3
-    t_contactw = ( (wall_loc - piston_loc) / shock_states[2] ) + t_contactp;
+    t_contactw = ( (wall_loc - piston_current_loc) / shock_states[2] ) + t_contactp;
     if (t_contactw >= t_target){
-      shock_loc = piston_loc + shock_states[2] * (t_target-t_contactp);
+      shock_loc = piston_current_loc + shock_states[2] * (t_target-t_contactp);
       break;
     }
-    piston_loc = vel_p * t_contactw; //upating piston loc.
+    piston_current_loc = vel_p * t_contactw; //upating piston loc.
     
     //Step 3: compute new right state from RH_JUMP conds.
     shock_states = ComputeShockStates(left_state[0],left_state[1],left_state[2],vel_w);
@@ -80,13 +83,17 @@ void RH_BASE::ComputeShockResults(double t_target,array<double,3> &left_state,ar
 
     //Step 4: compare if target time is greater than time of piston collision
     // if not, compute position of shock and piston and break. if yes, go to step 2
-    t_contactp = (wall_loc - piston_loc) / (vel_p - shock_states[2]) + t_contactw;
-    //t_contactp = (wall_loc - piston_loc - shock_states[2]*t_contactw) / (vel_p-shock_states[2]); //TODO: need to look into this further!!!
+    t_contactp = (wall_loc - piston_current_loc) / (vel_p - shock_states[2]) + t_contactw;
     if (t_contactp >= t_target){
       shock_loc = wall_loc + shock_states[2] * (t_target-t_contactw);
       break;
     }
-    piston_loc = vel_p * t_contactp; //updating piston loc.
+    piston_current_loc = vel_p * t_contactp; //updating piston loc.
+
+    if (n==rh_itermax-1){ //error message!
+      cerr<<"subiterations reached for computing shock states at time "<<t_target<<"s !"<<endl;
+      return;
+    }
   
   }
 

@@ -24,7 +24,7 @@ int main(){
   //scenario
   //note: 1: overlapped region assigned to fluid 1 (only shock in fluid 2)
   //      2: overlapped region left unassigned/new fluid (shock in fluid 1&2)
-  int scenario = 1;
+  int scenario = 2;
   bool top_change{false};
 
   //initial conditions
@@ -56,12 +56,12 @@ int main(){
   double wall_loc = 2.0; 
 
   //time(s)
-  //double t_final = 0.005;
-  //double t_final = 0.025;
-  double t_final = 0.03;
-  //double t_final = 0.50;
-  //double t_samples = 1.0e3;
-  double t_samples = 5.0;
+  //double t_final = 0.013;
+  //double t_final = 0.03;
+  //double t_final = 0.007;
+  double t_final = 0.50;
+  double t_samples = 1.0e3;
+  //double t_samples = 5.0;
   double t_topchange = (wall_loc-piston_loc) / vel_p; //time when piston interpenetrates wall
 
   //visualization
