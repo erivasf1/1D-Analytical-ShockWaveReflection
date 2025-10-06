@@ -80,7 +80,8 @@ void RH_BASE::ComputeShockResults(double t_target,array<double,3> &left_state,ar
 
     //Step 4: compare if target time is greater than time of piston collision
     // if not, compute position of shock and piston and break. if yes, go to step 2
-    t_contactp = (wall_loc - piston_loc - shock_states[2]*t_contactw) / (vel_p-shock_states[2]); //TODO: need to look into this further!!!
+    t_contactp = (wall_loc - piston_loc) / (vel_p - shock_states[2]) + t_contactw;
+    //t_contactp = (wall_loc - piston_loc - shock_states[2]*t_contactw) / (vel_p-shock_states[2]); //TODO: need to look into this further!!!
     if (t_contactp >= t_target){
       shock_loc = wall_loc + shock_states[2] * (t_target-t_contactw);
       break;

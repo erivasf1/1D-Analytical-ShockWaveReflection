@@ -58,10 +58,10 @@ int main(){
   //time(s)
   //double t_final = 0.005;
   //double t_final = 0.025;
-  //double t_final = 0.033;
-  double t_final = 0.50;
-  double t_samples = 1.0e3;
-  //double t_samples = 2.0;
+  double t_final = 0.03;
+  //double t_final = 0.50;
+  //double t_samples = 1.0e3;
+  double t_samples = 5.0;
   double t_topchange = (wall_loc-piston_loc) / vel_p; //time when piston interpenetrates wall
 
   //visualization
