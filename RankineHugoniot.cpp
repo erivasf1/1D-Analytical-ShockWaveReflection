@@ -2,79 +2,93 @@
 #include "RankineHugoniot.h"
 //----------------- RH_BASE CLASS DEFS. ------------------------------
 //--------------------------------------------------------------------
-RH_BASE::RH_BASE(double g) : gamma(g) {}
+RH_BASE::RH_BASE(double g,double r,double v,double press,double vp,double vw,double ploc,double wloc) : gamma(g), rho_f(r), vel_f(v), pressure_f(press), vel_p(vp), vel_w(vw), piston_loc(ploc), wall_loc(wloc) {}
 //--------------------------------------------------------------------
-double RH_BASE::ComputeAlpha(double rho_f){
+double RH_BASE::ComputeAlpha(double rho){
 
-  double res = 2.0 / ( (gamma+1.0)*rho_f );
+  double res = 2.0 / ( (gamma+1.0)*rho );
   return res;
 
 }
 //--------------------------------------------------------------------
-double RH_BASE::ComputeBeta(double pressure_f){
+double RH_BASE::ComputeBeta(double pressure){
 
-  double res = pressure_f * ( (gamma-1.0) / (gamma+1.0) );
+  double res = pressure * ( (gamma-1.0) / (gamma+1.0) );
   return res;
 
 }
 //--------------------------------------------------------------------
-double RH_BASE::ComputePhi(double vel_f,double vel_p,double alpha){
+double RH_BASE::ComputePhi(double vel,double alpha,double vel_wall){
 
-  double res = alpha / pow(vel_p-vel_f,2.0);
+  double res = alpha / pow(vel_wall-vel,2.0);
   return res;
 
 }
 //--------------------------------------------------------------------
-array<double,3> RH_BASE::ComputeShockStates(double rho_f,double vel_f,double pressure_f,double vel_p){
+array<double,3> RH_BASE::ComputeShockStates(double rho,double vel,double pressure,double vel_wall){
+  //note: vel_wall is either the vel. of the moving piston or stationary wall
 
-  double alpha = ComputeAlpha(rho_f);
-  double beta = ComputeBeta(pressure_f);
-  double phi = ComputePhi(vel_f,vel_p,alpha);
+  double alpha = ComputeAlpha(rho);
+  double beta = ComputeBeta(pressure);
+  double phi = ComputePhi(vel,alpha,vel_wall);
 
-  double pressure_star = ( 1.0 + sqrt(4.0*phi*(pressure_f+beta)+1.0) ) / (2.0*phi);
-  pressure_star += pressure_f; //pressure
-  double rho_star = ( (pressure_star/pressure_f) + ((gamma-1.0)/(gamma+1.0)) ) /
-  ( (pressure_star/pressure_f) * ((gamma-1.0)/(gamma+1.0)) + 1.0 );
-  rho_star *= rho_f; //density
+  double pressure_star = ( 1.0 + sqrt(4.0*phi*(pressure+beta)+1.0) ) / (2.0*phi);
+  pressure_star += pressure; //pressure
 
-  double vel_shock = (rho_f*vel_f - rho_star*vel_p) / (rho_f-rho_star); //shock speed
-  array<double,3> sols{rho_star,pressure_star,vel_shock};
+  double rho_star = ( (pressure_star/pressure) + ((gamma-1.0)/(gamma+1.0)) ) /
+  ( (pressure_star/pressure) * ((gamma-1.0)/(gamma+1.0)) + 1.0 );
+  rho_star *= rho; //density
+
+  double vel_shock = (rho*vel - rho_star*vel_wall) / (rho-rho_star); //shock speed
+
+  array<double,3> sols{rho_star,pressure_star,vel_shock}; //computed shock states
 
   return sols;
 }
 //--------------------------------------------------------------------
-void RH_BASE::AssignIntermediateStates(vector<double> &rho,vector<double> &vel,vector<double> &pressure,vector<double> &xcoords,double shock_loc,array<double,3> &left_state,array<double,3> &right_state,bool dir,double piston_loc,double wall_loc){
+void RH_BASE::ComputeShockResults(double t_target,array<double,3> &left_state,array<double,3> &right_state,double &shock_loc){
 
-  double x;
-  //NOTE: dir refers to the dir. of shock
-  for (int n=0;n<(int)xcoords.size();n++){ //iterating through all pts
-    x = xcoords[n];
+  if (t_target <= 0.0)
+    return;
 
-    if ((x<=piston_loc) || (x>= wall_loc)) //pts in piston or in wall case
-      continue;
+  double t_contactw = 0.0; double t_contactp = 0.0; //collision times of shock with wall & piston,respectively
+  array<double,3> shock_states; //{rho_star,pressure_star,vel_shock}
 
-    //+x dir. of shock case
-    if (dir == true){
-      if (x<shock_loc){
-        rho[n] = left_state[0]; vel[n] = left_state[1];  pressure[n] = left_state[2];
-      }
-      else{
-        rho[n] = right_state[0]; vel[n] = right_state[1];  pressure[n] = right_state[2];
-      }
+  left_state[0] = rho_f; left_state[1] = vel_f; left_state[2] = pressure_f; //!< resetting primitive vars. from previous time computation
+  right_state[0] = rho_f; right_state[1] = vel_f; right_state[2] = pressure_f;
+
+  for (int n=0;n<1e4;n++){
+    //Step 1: compute new left state from RH_JUMP conds.
+    //shock_states = ComputeShockStates(rho_f,vel_f,pressure_f,vel_p);
+    shock_states = ComputeShockStates(right_state[0],right_state[1],right_state[2],vel_p);
+    //left_state(shock_states[0],vel_p,shock_states[1]);
+    left_state[0] = shock_states[0]; left_state[1] = vel_p; left_state[2] = shock_states[1];
+
+    //Step 2: compare if target time is greater than time of shock-wall collision
+    // if not, compute position of shock and piston and break. if yes, go to step 3
+    t_contactw = ( (wall_loc - piston_loc) / shock_states[2] ) + t_contactp;
+    if (t_contactw >= t_target){
+      shock_loc = piston_loc + shock_states[2] * (t_target-t_contactp);
+      break;
     }
+    piston_loc = vel_p * t_contactw; //upating piston loc.
+    
+    //Step 3: compute new right state from RH_JUMP conds.
+    shock_states = ComputeShockStates(left_state[0],left_state[1],left_state[2],vel_w);
+    //right_state{shock_states[0],vel_w,shock_states[1]};
+    right_state[0] = shock_states[0]; right_state[1] = vel_w; right_state[2] = shock_states[1];
 
-    //-x dir. of shock case
-    else {
-      if (x<shock_loc){
-        rho[n] = right_state[0]; vel[n] = right_state[1];  pressure[n] = right_state[2];
-      }
-      else{
-        rho[n] = left_state[0]; vel[n] = left_state[1];  pressure[n] = left_state[2];
-      }
-
+    //Step 4: compare if target time is greater than time of piston collision
+    // if not, compute position of shock and piston and break. if yes, go to step 2
+    t_contactp = (wall_loc - piston_loc - shock_states[2]*t_contactw) / (vel_p-shock_states[2]); //TODO: need to look into this further!!!
+    if (t_contactp >= t_target){
+      shock_loc = wall_loc + shock_states[2] * (t_target-t_contactw);
+      break;
     }
-
+    piston_loc = vel_p * t_contactp; //updating piston loc.
+  
   }
+
 
   return;
 }
