@@ -56,12 +56,14 @@ int main(){
   double wall_loc = 2.0; 
 
   //time(s)
-  //double t_final = 0.013;
-  //double t_final = 0.03;
-  //double t_final = 0.007;
-  double t_final = 0.50;
-  double t_samples = 1.0e3;
-  //double t_samples = 5.0;
+  //double t_final = 0.50;
+  //double t_final = 0.25;
+  //double t_final = 0.202;
+  //double t_final = 0.19;
+  //double t_final = 0.009;
+  double t_final = 0.003;
+  //double t_samples = 1.0e3;
+  double t_samples = 5.0;
   double t_topchange = (wall_loc-piston_loc) / vel_p; //time when piston interpenetrates wall
 
   //visualization
@@ -223,6 +225,11 @@ int main(){
   //Storing all time-steps of state variables in one file (.pvd)
   const char* file = "Results/Results.pvd";
   Visual.WriteAllTimeSteps(file,iter_visuals);
+
+  //Writing line plot for MATLAB visualization
+  const char* line = "Results/lineplot.txt";
+  Visual.WriteLinePlot(line,xcoords,rho,vel,pressure);
+  
 
   //Writing all wave locations
   //const char* file_contact = "Results/Contact_Locs.vtu";

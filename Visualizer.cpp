@@ -279,5 +279,31 @@ void ParaviewWriter::WriteWaveLoc(const char* &filename,vector<double> &wave_pos
   return;
 }
 //-------------------------------------------------
+void ParaviewWriter::WriteLinePlot(const char* &filename,vector<double> &xcoords,vector<double> &density,vector<double> &velocity,vector<double> &pressure){
+
+  //ideal format: titleA titleB ... titleZ
+  //              dataA  dataB  ... dataZ
+  //              end of file
+  
+  ofstream myfile(filename);
+
+  if (!myfile){ //checking if file opened successfully
+    cerr<<"Error: Could Not Open File "<<filename<<endl;
+    return;
+  }
+
+  //Column vector titles
+  myfile<<"Analytical_Coords"<<"	"<<"Analytical_Density"<<"	"<<"Analytical_Velocity"<<"	"<<"Analytical_Pressure"<<endl;
+
+  //Data
+  for (int n=0;n<(int)xcoords.size();n++){
+    myfile<<xcoords[n]<<"	"<<density[n]<<"	"<<velocity[n]<<"	"<<pressure[n]<<endl;
+
+  }
+
+
+  return;
+}
+//-------------------------------------------------
 ParaviewWriter::~ParaviewWriter(){}
 //-------------------------------------------------
